@@ -4,5 +4,6 @@ concorde/_concorde.c
 data/
 build/
 concorde.egg-info/
+pyconcorde.egg-info/
 
 

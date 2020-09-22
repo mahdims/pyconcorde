@@ -22,6 +22,12 @@ cdef extern from "concorde.h":
         int *foundtour, char *name, double *timebound, int *hit_timebound,
         int silent, CCrandstate *rstate)
 
+    int CCtsp_solve_sparse (int ncount, int ecount, int *elist,
+        int *elen, int *in_tour, int *out_tour, double *in_val,
+        double *optval, int *success, int *foundtour, char *name,
+        double *timebound, int *hit_timebound, int silent,
+        CCrandstate *rstate)
+
     double CCutil_real_zeit()
     void CCutil_sprand (int seed, CCrandstate *r)
 
@@ -82,6 +88,33 @@ def _CCutil_gettsplib(str fname):
         return ncount, dat
     else:
         return -1, None
+
+
+def _CCtsp_solve_sparse(int ncount, int ecount, int elist,
+        int elen, char name, double timebound):
+
+    cdef:
+        int *in_tour = NULL
+        double *in_val = NULL
+        double optval = 0
+        int success = 0
+        int foundtour = 0
+        double *_timebound = NULL
+        int hit_timebound = 0
+        int silent = 2
+        CCrandstate rstate
+         # Output tour
+        np.ndarray[int, ndim=1] out_tour
+
+    out_tour = np.zeros(ncount, dtype=np.int32)
+    if timebound > 0:
+        _timebound = &timebound
+
+    retval = CCtsp_solve_sparse(ncount, ecount, &elist, &elen, in_tour, &out_tour[0],
+        in_val, &optval, &success, &foundtour, name.encode('utf-8'),
+        _timebound, &hit_timebound, silent, &rstate)
+
+    return out_tour, optval, bool(success), bool(foundtour), bool(hit_timebound)
 
 
 def _CCtsp_solve_dat(

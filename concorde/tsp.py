@@ -7,7 +7,7 @@ import shutil
 import tempfile
 import uuid
 
-from concorde._concorde import _CCutil_gettsplib, _CCtsp_solve_dat
+from concorde._concorde import _CCutil_gettsplib, _CCtsp_solve_dat, _CCtsp_solve_sparse
 from concorde.util import write_tsp_file, EDGE_WEIGHT_TYPES
 
 ComputedTour = namedtuple('ComputedTour', [
@@ -33,8 +33,7 @@ class TSPSolver(object):
 
     @classmethod
     def from_data(cls, xs, ys, norm, name=None):
-        """ Construct datagroup from given data.
-
+        """ Construct data group from given data.
         This routine writes the given data to a temporary file, and then uses
         Concorde's file parser to read from file and do the initialization.
         """
@@ -72,6 +71,18 @@ class TSPSolver(object):
             return "Uninitialized TSPSolver"
         else:
             return "TSPSolver with {} nodes".format(self._ncount)
+
+    def solve_from_distance_matrix(self, nodes, dis, max_time):
+        ncount = len(nodes)
+        ecount = len(dis)
+        elist = []
+        elen = []
+        for edge, value in dis.items():
+            elist.append(edge)
+            elen.append(value)
+        res = _CCtsp_solve_sparse(ncount, ecount, elist, elen, "TSP_Concorde", max_time)
+
+        return ComputedTour(res)
 
     def solve(self, time_bound=-1, verbose=True, random_seed=0):
         res = _CCtsp_solve_dat(
