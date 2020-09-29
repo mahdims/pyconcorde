@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-from __future__ import division, print_function
 
+from __future__ import division, print_function
 from collections import namedtuple
 import os
 import shutil
@@ -11,14 +10,14 @@ from concorde._concorde import _CCutil_gettsplib, _CCtsp_solve_dat, _CCtsp_solve
 from concorde.util import write_tsp_file, EDGE_WEIGHT_TYPES
 
 ComputedTour = namedtuple('ComputedTour', [
-    'tour', 'optimal_value', 'success', 'found_tour', 'hit_timebound'
-])
+    'tour', 'optimal_value', 'success', 'found_tour', 'hit_timebound'])
 
 
 class TSPSolver(object):
 
     def __init__(self):
         self._data = None
+        self._dis = None
         self._ncount = -1
 
     @classmethod
@@ -72,21 +71,19 @@ class TSPSolver(object):
         else:
             return "TSPSolver with {} nodes".format(self._ncount)
 
-    def solve_from_distance_matrix(self, nodes, dis, max_time):
-        ncount = len(nodes)
-        ecount = len(dis)
-        elist = []
-        elen = []
-        for edge, value in dis.items():
-            elist.append(edge)
-            elen.append(value)
-        res = _CCtsp_solve_sparse(ncount, ecount, elist, elen, "TSP_Concorde", max_time)
+    @classmethod
+    def from_matrix(cls, dis):
+        self = cls()
+        self._ncount = int(dis.shape[0])
+        self._dis = dis
+        return self
 
-        return ComputedTour(res)
+    def solve(self,time_bound=-1, verbose=True, random_seed=0):
+        if self._dis is not None:
+            res = _CCtsp_solve_sparse(self._ncount, self._dis,"name", time_bound)
+        else:
+            res = _CCtsp_solve_dat(
+                self._ncount, self._data, "TSP_Concorde",
+                time_bound, not verbose, random_seed)
 
-    def solve(self, time_bound=-1, verbose=True, random_seed=0):
-        res = _CCtsp_solve_dat(
-            self._ncount, self._data, "name",
-            time_bound, not verbose, random_seed
-        )
         return ComputedTour(*res)

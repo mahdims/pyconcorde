@@ -3,8 +3,10 @@
 Cython wrappers around Concorde API.
 
 """
-import numpy as np
-cimport numpy as np
+import numpy
+cimport numpy
+
+from cython.operator cimport dereference as deref
 
 cdef extern from "concorde.h":
     struct CCdatagroup:
@@ -52,27 +54,27 @@ cdef class _CCdatagroup:
         cdef double[:] x_data
         if self.initialized:
             x_data = <double[:self.ncount]>self.c_data.x
-            return np.asarray(x_data)
+            return numpy.asarray(x_data)
         else:
-            return np.array([])
+            return numpy.array([])
 
     @property
     def y(self):
         cdef double[:] y_data
         if self.initialized:
             y_data = <double[:self.ncount]>self.c_data.y
-            return np.asarray(y_data)
+            return numpy.asarray(y_data)
         else:
-            return np.array([])
+            return numpy.array([])
 
     @property
     def z(self):
         cdef double[:] y_data
         if self.initialized:
             z_data = <double[:self.ncount]>self.c_data.z
-            return np.asarray(z_data)
+            return numpy.asarray(z_data)
         else:
-            return np.array([])
+            return numpy.array([])
 
 
 def _CCutil_gettsplib(str fname):
@@ -90,10 +92,13 @@ def _CCutil_gettsplib(str fname):
         return -1, None
 
 
-def _CCtsp_solve_sparse(int ncount, int ecount, int elist,
-        int elen, char name, double timebound):
+def _CCtsp_solve_sparse(int ncount, numpy.ndarray[int, ndim=2] dist, str name, double timebound):
+
 
     cdef:
+        int ecount = (ncount*(ncount - 1)) / 2
+        numpy.ndarray[int, ndim=1, mode="c"] elist
+        numpy.ndarray[int, ndim=1, mode="c"] elen
         int *in_tour = NULL
         double *in_val = NULL
         double optval = 0
@@ -101,16 +106,39 @@ def _CCtsp_solve_sparse(int ncount, int ecount, int elist,
         int foundtour = 0
         double *_timebound = NULL
         int hit_timebound = 0
-        int silent = 2
+        int silent = 0
+        int i  = 0
+        int j = 0
         CCrandstate rstate
-         # Output tour
-        np.ndarray[int, ndim=1] out_tour
+        int seed  = 0
+        # Output tour
+        numpy.ndarray[int, ndim=1] out_tour
+        int edge = 0
+        int edgeWeight = 0
 
-    out_tour = np.zeros(ncount, dtype=np.int32)
+    elist = numpy.zeros(ecount*2, dtype=numpy.int32)
+    elen = numpy.zeros(ecount, dtype=numpy.int32)
+
+    out_tour = numpy.zeros(ncount, dtype=numpy.int32)
     if timebound > 0:
         _timebound = &timebound
 
-    retval = CCtsp_solve_sparse(ncount, ecount, &elist, &elen, in_tour, &out_tour[0],
+
+    if seed != 0:
+        seed = <int>CCutil_real_zeit()
+    CCutil_sprand (seed, &rstate)
+
+
+    for i in range(ncount):
+        for j in range(i+1, ncount):
+             if (i != j):
+                elist[edge] = i
+                elist[edge + 1] = j
+                elen[edgeWeight] = dist[i,j]
+                edgeWeight+= 1
+                edge = edge + 2
+
+    retval = CCtsp_solve_sparse(ncount, ecount, &elist[0], &elen[0], in_tour, &out_tour[0],
         in_val, &optval, &success, &foundtour, name.encode('utf-8'),
         _timebound, &hit_timebound, silent, &rstate)
 
@@ -122,6 +150,7 @@ def _CCtsp_solve_dat(
         str name, double timebound, int silent, int seed=0):
 
     cdef:
+
         int *in_tour = NULL
         double *in_val = NULL      # initial upper bound
         double opt_val = 0         # value of the optimal tour
@@ -135,9 +164,9 @@ def _CCtsp_solve_dat(
         CCrandstate rstate
 
         # Output tour
-        np.ndarray[int, ndim=1] out_tour
+        numpy.ndarray[int, ndim=1] out_tour
 
-    out_tour = np.zeros(ncount, dtype=np.int32)
+    out_tour = numpy.zeros(ncount, dtype=numpy.int32)
 
     if seed != 0:
         seed = <int>CCutil_real_zeit()

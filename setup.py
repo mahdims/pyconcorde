@@ -154,6 +154,7 @@ setup(
         'cython>=0.22.0',
         'numpy>=1.10.0',
     ],
+    compiler_directives={'language_level' : "3"},
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
